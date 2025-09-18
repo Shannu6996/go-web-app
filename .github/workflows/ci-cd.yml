@@ -23,3 +23,23 @@ jobs:
           context: .
           push: true
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/go-web-app:latest, ${{ secrets.DOCKERHUB_USERNAME }}/go-web-app:${{ github.sha }}
+
+  # This 'deploy' section is the "edit" or addition we are making
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy to Server via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            echo "🚀 Starting deployment..."
+            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/go-web-app:latest
+            docker stop go-web-app-container || true
+            docker rm go-web-app-container || true
+            docker run -d -p 80:8080 --name go-web-app-container ${{ secrets.DOCKERHUB_USERNAME }}/go-web-app:latest
+            echo "✅ Deployment successful!"
